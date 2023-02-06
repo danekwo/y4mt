@@ -58,6 +58,7 @@ import com.mbientlab.metawear.builder.RouteBuilder;
 import com.mbientlab.metawear.builder.RouteComponent;
 import com.mbientlab.metawear.data.SensorOrientation;
 import com.mbientlab.metawear.module.Accelerometer;
+import com.mbientlab.metawear.module.AccelerometerBmi160;
 import com.mbientlab.metawear.module.AccelerometerBosch;
 import com.mbientlab.metawear.module.AccelerometerMma8452q;
 import com.mbientlab.metawear.module.Debug;
@@ -109,6 +110,8 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
 
         final Capture<AsyncDataProducer> orientCapture = new Capture<>();
         final Capture<Accelerometer> accelCapture = new Capture<>();
+        final Capture<AccelerometerBmi160.StepDetectorDataProducer> stepCapture = new Capture<>();
+        // TODO figure out what to do with stepCounter capture
 
         newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> connectedDevices.remove(newDeviceState)));
         newBoard.connectAsync().onSuccessTask(task -> {
