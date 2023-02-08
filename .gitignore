@@ -1,5 +1,7 @@
-/.gradle
+.gradle/
+local.properties
 /multimw/build/
 
 /.idea/workspace.xml
 /.idea/libraries
+

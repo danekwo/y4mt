@@ -10,10 +10,7 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
-            <option value="$PROJECT_DIR$/freefall" />
             <option value="$PROJECT_DIR$/multimw" />
-            <option value="$PROJECT_DIR$/sensorfusion" />
-            <option value="$PROJECT_DIR$/starter" />
           </set>
         </option>
       </GradleProjectSettings>
