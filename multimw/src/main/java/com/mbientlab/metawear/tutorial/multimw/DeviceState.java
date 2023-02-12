@@ -38,13 +38,14 @@ import android.bluetooth.BluetoothDevice;
  */
 class DeviceState {
     final BluetoothDevice btDevice;
-    String deviceOrientation, deviceSteps;
+    String deviceOrientation, deviceSteps, deviceAccel;
     boolean pressed, connecting;
 
     DeviceState(BluetoothDevice btDevice) {
         this.btDevice= btDevice;
         this.deviceOrientation= null;
         this.deviceSteps = null;
+        this.deviceAccel = null;
         pressed= false;
     }
 

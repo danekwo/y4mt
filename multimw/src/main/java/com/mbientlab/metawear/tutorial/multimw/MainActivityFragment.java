@@ -42,22 +42,27 @@ import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListView;
+import android.widget.Toolbar;
 
 import com.mbientlab.metawear.AsyncDataProducer;
 import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.Route;
 import com.mbientlab.metawear.Subscriber;
 import com.mbientlab.metawear.android.BtleService;
+import com.mbientlab.metawear.data.Acceleration;
 import com.mbientlab.metawear.data.SensorOrientation;
 import com.mbientlab.metawear.module.Accelerometer;
 import com.mbientlab.metawear.module.AccelerometerBmi160;
 import com.mbientlab.metawear.module.Debug;
 import com.mbientlab.metawear.module.Haptic;
 import com.mbientlab.metawear.module.Switch;
+import com.mbientlab.metawear.module.Temperature;
 
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -103,14 +108,16 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
         stateToBoards.put(newDeviceState, newBoard);
 
         final Capture<AsyncDataProducer> orientCapture = new Capture<>();
-        final Capture<AccelerometerBmi160> accelCapture = new Capture<>();
+        final Capture<AccelerometerBmi160> accelerometerBmi160Capture = new Capture<>();
         final Capture<AccelerometerBmi160.StepDetectorDataProducer> stepCapture = new Capture<>();
+        final Capture<AsyncDataProducer> accelDataCapture = new Capture<>();
 
         AtomicInteger stepCount = new AtomicInteger(0);
         AtomicReference<Boolean> twoStep = new AtomicReference<>(false);
 
         newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> connectedDevices.remove(newDeviceState)));
         newBoard.connectAsync(
+        //!  accel, step and orientation handling
         ).onSuccessTask(task -> {
             getActivity().runOnUiThread(() -> {
                 newDeviceState.connecting= false;
@@ -119,57 +126,58 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
 
             final AccelerometerBmi160 accelerometer = newBoard.getModule(AccelerometerBmi160.class);
             final AsyncDataProducer orientation = accelerometer.orientation();
-            accelCapture.set(accelerometer);
-            orientCapture.set(orientation);
-
-            return orientation.addRouteAsync(source -> source.stream((data, env) -> getActivity().runOnUiThread(() -> {
-                newDeviceState.deviceOrientation = data.value(SensorOrientation.class).toString();
-                connectedDevices.notifyDataSetChanged();
-            })));
-        }).onSuccessTask(task -> {
-            getActivity().runOnUiThread(() -> {
-                newDeviceState.connecting= false;
-                connectedDevices.notifyDataSetChanged();
-            });
-
-            final AccelerometerBmi160 accelerometer = newBoard.getModule(AccelerometerBmi160.class);
+            final AsyncDataProducer accel = accelerometer.packedAcceleration();
             final AccelerometerBmi160.StepDetectorDataProducer stepDetector = accelerometer.stepDetector();
-            accelCapture.set(accelerometer);
-            stepCapture.set(stepDetector);
 
-            //* if I place the config edit here, it will "update" everytime a step is detected ... not useful but will do for now
-            AccelerometerBmi160.StepConfigEditor editor = stepDetector.configure();
-            editor.mode(AccelerometerBmi160.StepDetectorMode.ROBUST);
-            editor.commit();
+            //* ODR? RANGE? use –>  accelerometer.getOdr(); accelerometer.getRange();
+            //TODO configure accel
+
+            //? if I place the config edit here, will it "update" everytime a step is detected?
             //TODO look into checking whether config parameters actually went through
+            stepDetector.configure().mode(AccelerometerBmi160.StepDetectorMode.ROBUST).commit();
 
-            return stepDetector.addRouteAsync(source -> source.stream((data, env) -> {
+            accelerometerBmi160Capture.set(accelerometer);
+            orientCapture.set(orientation);
+            stepCapture.set(stepDetector);
+            accelDataCapture.set(accel);
+
+            accel.addRouteAsync(source -> source.multicast()
+                .to().stream((data, env) -> {
+                    getActivity().runOnUiThread(() -> {
+                        newDeviceState.deviceAccel = "Accel:" + data.value(Acceleration.class).toString();
+                        connectedDevices.notifyDataSetChanged();
+                    });
+                })/* .to().stream() */);
+
+            stepDetector.addRouteAsync(source -> source.stream((data, env) -> {
                 getActivity().runOnUiThread(() -> {
-                    /*
-                    !NOTE - Step detection algorithm
+                    /**NOTE - Step detection algorithm
                     looks like the built-in step detection algorithm detects both feet touchdown and liftoff as steps.
                     so as a quick and dirty fix, I'll flip between bool states to effectively only register half the steps,
                     to more accurately mirror steps irl with each leg
                     this was tested with the device at ankle level, it may perform differently anywhere else.
                     */
-
                     if (twoStep.get()) {
                         twoStep.set(false);
                         stepCount.getAndIncrement();
                         newDeviceState.deviceSteps = "Steps:" + stepCount;
-                        System.out.println("#### STEP ####");
                         connectedDevices.notifyDataSetChanged();
 
-                        //* step –> vibrate
-                        newBoard.getModule(Haptic.class).startMotor((short) 400);
+                        newBoard.getModule(Haptic.class).startMotor((short) 400); //* step –> vibrate
                     }
                     else{twoStep.set(true);}
-
                 });
-
-
             }));
-        }).onSuccessTask(task -> newBoard.getModule(Switch.class).state().addRouteAsync(source -> source.stream((Subscriber) (data, env) -> {
+
+            orientation.addRouteAsync(source -> source.stream((data, env) -> getActivity().runOnUiThread(() -> {
+                newDeviceState.deviceOrientation = data.value(SensorOrientation.class).toString();
+                connectedDevices.notifyDataSetChanged();
+            })));
+
+            return null;
+        }
+        //! button press handling
+        ).onSuccessTask(task -> newBoard.getModule(Switch.class).state().addRouteAsync(source -> source.stream((Subscriber) (data, env) -> {
             getActivity().runOnUiThread(() -> {
                 newDeviceState.pressed = data.value(Boolean.class);
                 connectedDevices.notifyDataSetChanged();
@@ -181,7 +189,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
 //                led.play();
 //            } else{
 //                led.stop(true);
-//            };
+//            }
 
         }))).continueWith((Continuation<Route, Void>) task -> {
             if (task.isFaulted()) {
@@ -197,8 +205,9 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
                 }
             } else {
                 orientCapture.get().start();
-                accelCapture.get().start();
+                accelerometerBmi160Capture.get().start();
                 stepCapture.get().start();
+                accelDataCapture.get().start();
             }
             return null;
         });

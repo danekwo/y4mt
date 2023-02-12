@@ -58,11 +58,14 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        //? this method doesn't use resultCode for anything?
         switch (requestCode) {
             case REQUEST_START_BLE_SCAN:
-                BluetoothDevice selectedDevice= data.getParcelableExtra(ScannerActivity.EXTRA_DEVICE);
-                if (selectedDevice != null) {
-                    ((MainActivityFragment) getSupportFragmentManager().findFragmentById(R.id.main_activity_content)).addNewDevice(selectedDevice);
+                if (data != null) {
+                    BluetoothDevice selectedDevice = data.getParcelableExtra(ScannerActivity.EXTRA_DEVICE);
+                    if (selectedDevice != null) {
+                        ((MainActivityFragment) getSupportFragmentManager().findFragmentById(R.id.main_activity_content)).addNewDevice(selectedDevice);
+                    }
                 }
                 break;
         }

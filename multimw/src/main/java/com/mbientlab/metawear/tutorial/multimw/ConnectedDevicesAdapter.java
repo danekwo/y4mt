@@ -60,6 +60,7 @@ public class ConnectedDevicesAdapter extends ArrayAdapter<DeviceState> {
             viewHolder.deviceAddress= convertView.findViewById(R.id.status_mac_address);
             viewHolder.deviceOrientation= convertView.findViewById(R.id.status_orientation);
             viewHolder.deviceSteps= convertView.findViewById(R.id.status_steps);
+            viewHolder.deviceAccel= convertView.findViewById(R.id.status_accel);
             viewHolder.switchState= convertView.findViewById(R.id.status_button);
             viewHolder.connectingText= convertView.findViewById(R.id.text_connecting);
             viewHolder.connectingProgress= convertView.findViewById(R.id.connecting_progress);
@@ -84,10 +85,12 @@ public class ConnectedDevicesAdapter extends ArrayAdapter<DeviceState> {
             viewHolder.connectingText.setVisibility(View.VISIBLE);
             viewHolder.deviceOrientation.setVisibility(View.GONE);
             viewHolder.deviceSteps.setVisibility(View.GONE);
+            viewHolder.deviceAccel.setVisibility(View.GONE);
             viewHolder.switchState.setVisibility(View.GONE);
         } else {
             viewHolder.deviceOrientation.setVisibility(View.VISIBLE);
             viewHolder.deviceSteps.setVisibility(View.VISIBLE);
+            viewHolder.deviceAccel.setVisibility(View.VISIBLE);
             viewHolder.switchState.setVisibility(View.VISIBLE);
 
             if (state.deviceOrientation != null) {
@@ -96,6 +99,9 @@ public class ConnectedDevicesAdapter extends ArrayAdapter<DeviceState> {
 
             if (state.deviceSteps != null) {
                 viewHolder.deviceSteps.setText(state.deviceSteps);
+            }
+            if (state.deviceAccel != null) {
+                viewHolder.deviceAccel.setText(state.deviceAccel);
             }
 
             if (state.pressed) {
@@ -116,7 +122,7 @@ public class ConnectedDevicesAdapter extends ArrayAdapter<DeviceState> {
     }
 
     private class ViewHolder {
-        TextView deviceName, deviceAddress, deviceOrientation, deviceSteps, connectingText;
+        TextView deviceName, deviceAddress, deviceOrientation, deviceSteps, deviceAccel, connectingText;
         RadioGroup switchState;
         ProgressBar connectingProgress;
     }
@@ -130,6 +136,7 @@ public class ConnectedDevicesAdapter extends ArrayAdapter<DeviceState> {
             current.pressed= newState.pressed;
             current.deviceOrientation= newState.deviceOrientation;
             current.deviceSteps= newState.deviceSteps;
+            current.deviceAccel= newState.deviceAccel;
             notifyDataSetChanged();
         }
     }
