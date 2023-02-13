@@ -71,7 +71,18 @@ public class ConnectedDevicesAdapter extends ArrayAdapter<DeviceState> {
         }
 
         DeviceState state= getItem(position);
-        final String deviceName= state.btDevice.getName();
+        final String deviceName;
+
+        switch (state.btDevice.getAddress()){
+            case "E3:A0:35:DC:D4:83":
+                deviceName = "mwE3";
+                break;
+            case "DF:9F:65:77:02:1A":
+                deviceName = "mw1A";
+                break;
+            default:
+                deviceName = state.btDevice.getAddress();
+        }
 
         if (deviceName != null && deviceName.length() > 0) {
             viewHolder.deviceName.setText(deviceName);

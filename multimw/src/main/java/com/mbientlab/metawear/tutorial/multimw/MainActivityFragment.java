@@ -59,6 +59,7 @@ import com.mbientlab.metawear.data.Acceleration;
 import com.mbientlab.metawear.data.SensorOrientation;
 import com.mbientlab.metawear.module.Accelerometer;
 import com.mbientlab.metawear.module.AccelerometerBmi160;
+import com.mbientlab.metawear.module.AccelerometerBosch;
 import com.mbientlab.metawear.module.Debug;
 import com.mbientlab.metawear.module.Haptic;
 import com.mbientlab.metawear.module.Switch;
@@ -108,9 +109,8 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
         stateToBoards.put(newDeviceState, newBoard);
 
         final Capture<AsyncDataProducer> orientCapture = new Capture<>();
-        final Capture<AccelerometerBmi160> accelerometerBmi160Capture = new Capture<>();
-        final Capture<AccelerometerBmi160.StepDetectorDataProducer> stepCapture = new Capture<>();
         final Capture<AsyncDataProducer> accelDataCapture = new Capture<>();
+        final Capture<AccelerometerBmi160.StepDetectorDataProducer> stepCapture = new Capture<>();
 
         AtomicInteger stepCount = new AtomicInteger(0);
         AtomicReference<Boolean> twoStep = new AtomicReference<>(false);
@@ -129,45 +129,49 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
             final AsyncDataProducer accel = accelerometer.packedAcceleration();
             final AccelerometerBmi160.StepDetectorDataProducer stepDetector = accelerometer.stepDetector();
 
-            //* ODR? RANGE? use –>  accelerometer.getOdr(); accelerometer.getRange();
-            //TODO configure accel
-
-            //? if I place the config edit here, will it "update" everytime a step is detected?
-            //TODO look into checking whether config parameters actually went through
             stepDetector.configure().mode(AccelerometerBmi160.StepDetectorMode.ROBUST).commit();
+            accelerometer.configure().range(AccelerometerBmi160.AccRange.AR_4G).odr(AccelerometerBmi160.OutputDataRate.ODR_50_HZ).commit();
+            //* ODR? RANGE? use –>  accelerometer.getOdr(); accelerometer.getRange();
+            //System.out.println("acc range: " + accelerometer.getRange() + " /// acc freq: " + accelerometer.getOdr() + "###");
 
-            accelerometerBmi160Capture.set(accelerometer);
             orientCapture.set(orientation);
             stepCapture.set(stepDetector);
             accelDataCapture.set(accel);
 
-            accel.addRouteAsync(source -> source.multicast()
-                .to().stream((data, env) -> {
-                    getActivity().runOnUiThread(() -> {
-                        newDeviceState.deviceAccel = "Accel:" + data.value(Acceleration.class).toString();
-                        connectedDevices.notifyDataSetChanged();
-                    });
-                })/* .to().stream() */);
+            //? how many values to average? 15? (multiple of 3 due to packed acc?)
+            //? what is the point of this ????!?!?!?!?
+            //TODO implement thresholds
+            accel.addRouteAsync(source -> source.lowpass((byte) 15).stream((data, env) -> getActivity().runOnUiThread(() -> {
+                newDeviceState.deviceAccel = "Accel (lpf):" + data.value(Acceleration.class).toString();
+                System.out.println("Accel (lpf):" + data.value(Acceleration.class).toString());
+                connectedDevices.notifyDataSetChanged();
+            })));
 
-            stepDetector.addRouteAsync(source -> source.stream((data, env) -> {
-                getActivity().runOnUiThread(() -> {
-                    /**NOTE - Step detection algorithm
-                    looks like the built-in step detection algorithm detects both feet touchdown and liftoff as steps.
-                    so as a quick and dirty fix, I'll flip between bool states to effectively only register half the steps,
-                    to more accurately mirror steps irl with each leg
-                    this was tested with the device at ankle level, it may perform differently anywhere else.
-                    */
-                    if (twoStep.get()) {
-                        twoStep.set(false);
-                        stepCount.getAndIncrement();
-                        newDeviceState.deviceSteps = "Steps:" + stepCount;
-                        connectedDevices.notifyDataSetChanged();
+            //* non-filtered acc
+//            accel.addRouteAsync(source -> source.stream((data, env) -> getActivity().runOnUiThread(() -> {
+//                newDeviceState.deviceAccel = "Accel:" + data.value(Acceleration.class).toString();
+//                System.out.println("Accel:" + data.value(Acceleration.class).toString());
+//                connectedDevices.notifyDataSetChanged();
+//            })));
 
-                        newBoard.getModule(Haptic.class).startMotor((short) 400); //* step –> vibrate
-                    }
-                    else{twoStep.set(true);}
-                });
-            }));
+            stepDetector.addRouteAsync(source -> source.stream((data, env) -> getActivity().runOnUiThread(() -> {
+                /**NOTE - Step detection algorithm
+                 looks like the built-in step detection algorithm detects both feet touchdown and liftoff as steps.
+                 so as a quick and dirty fix, I'll flip between bool states to effectively only register half the steps,
+                 to more accurately mirror steps irl with each leg
+                 this was tested with the device at ankle level, it may perform differently anywhere else.
+                 */
+                if (twoStep.get()) {
+                    twoStep.set(false);
+                    stepCount.getAndIncrement();
+                    newDeviceState.deviceSteps = "Steps:" + stepCount;
+                    connectedDevices.notifyDataSetChanged();
+
+                    newBoard.getModule(Haptic.class).startMotor((short) 400); //* step –> vibrate
+                } else {
+                    twoStep.set(true);
+                }
+            })));
 
             orientation.addRouteAsync(source -> source.stream((data, env) -> getActivity().runOnUiThread(() -> {
                 newDeviceState.deviceOrientation = data.value(SensorOrientation.class).toString();
@@ -183,13 +187,13 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
                 connectedDevices.notifyDataSetChanged();
             });
             //* example: Turn blue led on when button is pressed
-//            Led led = newBoard.getModule(Led.class);
-//            if (data.value(Boolean.class)){
-//                led.editPattern(Led.Color.BLUE, Led.PatternPreset.SOLID).commit();
-//                led.play();
-//            } else{
-//                led.stop(true);
-//            }
+                /*Led led = newBoard.getModule(Led.class);
+                if (data.value(Boolean.class)){
+                    led.editPattern(Led.Color.BLUE, Led.PatternPreset.SOLID).commit();
+                    led.play();
+                } else{
+                    led.stop(true);
+                } */
 
         }))).continueWith((Continuation<Route, Void>) task -> {
             if (task.isFaulted()) {
@@ -205,9 +209,8 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
                 }
             } else {
                 orientCapture.get().start();
-                accelerometerBmi160Capture.get().start();
-                stepCapture.get().start();
                 accelDataCapture.get().start();
+                stepCapture.get().start();
             }
             return null;
         });
