@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <!--
   ~ Copyright 2015 MbientLab Inc. All rights reserved.
   ~
@@ -29,29 +30,8 @@
   ~ contact MbientLab Inc, at www.mbientlab.com.
   -->
 
-<resources>
-    <string name="app_name">dMMW</string>
-    <string name="action_settings">Settings</string>
-    <string name="text_released">Released</string>
-    <string name="text_pressed">Pressed</string>
-    <string name="text_orientation">Orientation</string>
-    <string name="text_steps">Steps</string>
-    <string name="text_accel">Accel</string>
-    <string name="text_connecting">Connecting&#8230;</string>
-
-    <string name="label_start_sample">Start Sampling</string>
-    <string name="label_clear">Clear</string>
-    <string name="label_save">Save</string>
-    <string name="label_yes">Yes</string>
-    <string name="label_no">No</string>
-
-    <string name="navigation_fragment_accelerometer">Accelerometer</string>
-    <string name="config_name_acc_range">Acceleration Range</string>
-    <string-array name="values_bmi160_acc_range">
-        <item>±2g</item>
-        <item>±4g</item>
-        <item>±8g</item>
-        <item>±16g</item>
-    </string-array>
-
-</resources>
+<com.github.mikephil.charting.charts.LineChart
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/data_chart"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent" />

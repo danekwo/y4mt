@@ -37,18 +37,15 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.os.Bundle;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
-import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
-import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListView;
-import android.widget.Toolbar;
 
 import com.mbientlab.metawear.AsyncDataProducer;
 import com.mbientlab.metawear.MetaWearBoard;
@@ -59,11 +56,9 @@ import com.mbientlab.metawear.data.Acceleration;
 import com.mbientlab.metawear.data.SensorOrientation;
 import com.mbientlab.metawear.module.Accelerometer;
 import com.mbientlab.metawear.module.AccelerometerBmi160;
-import com.mbientlab.metawear.module.AccelerometerBosch;
 import com.mbientlab.metawear.module.Debug;
 import com.mbientlab.metawear.module.Haptic;
 import com.mbientlab.metawear.module.Switch;
-import com.mbientlab.metawear.module.Temperature;
 
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -78,11 +73,16 @@ import bolts.Continuation;
 public class MainActivityFragment extends Fragment implements ServiceConnection {
     private final HashMap<DeviceState, MetaWearBoard> stateToBoards;
     private BtleService.LocalBinder binder;
-
     private ConnectedDevicesAdapter connectedDevices= null;
+    protected int sensorResId;
 
     public MainActivityFragment() {
         stateToBoards = new HashMap<>();
+    }
+    //TODO remove default constructor when sensorResID is given in final class
+    public MainActivityFragment(int sensorResId) {
+        stateToBoards = new HashMap<>();
+        this.sensorResId= sensorResId;
     }
 
     @Override
@@ -139,7 +139,6 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
             accelDataCapture.set(accel);
 
             //? how many values to average? 15? (multiple of 3 due to packed acc?)
-            //? what is the point of this ????!?!?!?!?
             //TODO implement thresholds
             accel.addRouteAsync(source -> source.lowpass((byte) 15).stream((data, env) -> getActivity().runOnUiThread(() -> {
                 newDeviceState.deviceAccel = "Accel (lpf):" + data.value(Acceleration.class).toString();
@@ -228,6 +227,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
     public void onViewCreated(View view, Bundle savedInstanceState) {
         ListView connectedDevicesView= view.findViewById(R.id.connected_devices);
         connectedDevicesView.setAdapter(connectedDevices);
+        //* long-click to remove devices ↓
         connectedDevicesView.setOnItemLongClickListener((parent, view1, position, id) -> {
             DeviceState current= connectedDevices.getItem(position);
             final MetaWearBoard selectedBoard= stateToBoards.get(current);

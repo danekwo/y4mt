@@ -52,6 +52,7 @@ allprojects {
         //    url "http://localhost:8000/"
         //    layout "gradle"
         //}
+        maven { url "https://jitpack.io" }
         ivy {
             url "https://mbientlab.com/releases/ivyrep"
             layout "gradle"
