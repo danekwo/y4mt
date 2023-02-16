@@ -110,6 +110,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
 
         final Capture<AsyncDataProducer> orientCapture = new Capture<>();
         final Capture<AsyncDataProducer> accelDataCapture = new Capture<>();
+        final Capture<AccelerometerBmi160> accelerometerBmi160Capture = new Capture<>();
         final Capture<AccelerometerBmi160.StepDetectorDataProducer> stepCapture = new Capture<>();
 
         AtomicInteger stepCount = new AtomicInteger(0);
@@ -137,6 +138,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
             orientCapture.set(orientation);
             stepCapture.set(stepDetector);
             accelDataCapture.set(accel);
+            accelerometerBmi160Capture.set(accelerometer);
 
             //? how many values to average? 15? (multiple of 3 due to packed acc?)
             //? what is the point of this ????!?!?!?!?
@@ -211,6 +213,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
                 orientCapture.get().start();
                 accelDataCapture.get().start();
                 stepCapture.get().start();
+                accelerometerBmi160Capture.get().start();
             }
             return null;
         });
