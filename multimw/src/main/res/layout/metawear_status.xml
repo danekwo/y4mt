@@ -30,16 +30,11 @@
   ~ contact MbientLab Inc, at www.mbientlab.com.
   -->
 
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-              android:id="@+id/metawear_status_layout_parent"
-              android:orientation="vertical"
-              android:layout_width="match_parent"
-              android:layout_height="match_parent"
-              android:longClickable="true" >
-
-    <ScrollView
+    <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+        android:orientation="vertical"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:longClickable="true">
 
         <LinearLayout
             android:id="@+id/metawear_status_layout"
@@ -119,6 +114,11 @@
                 android:text="@string/text_accel"
                 android:textAppearance="?android:attr/textAppearanceMedium" />
 
+            <include
+                layout="@layout/fragment_sensor_config_spinner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+
             <TextView
                 android:id="@+id/text_connecting"
                 android:layout_width="wrap_content"
@@ -135,5 +135,3 @@
 
         </LinearLayout>
     </ScrollView>
-
-</LinearLayout>

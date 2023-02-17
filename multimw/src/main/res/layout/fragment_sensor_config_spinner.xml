@@ -49,15 +49,17 @@
             <include layout="@layout/layout_two_button" />
 
             <TextView
+                android:id="@+id/config_option_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textAppearance="?android:attr/textAppearanceMedium"
-                android:id="@+id/config_option_title" />
+                android:visibility="gone" />
 
             <Spinner
+                android:id="@+id/config_option_spinner"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:id="@+id/config_option_spinner" />
+                android:visibility="gone" />
 
             <include layout="@layout/component_line_chart" />
 

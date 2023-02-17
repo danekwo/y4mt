@@ -42,6 +42,7 @@ import com.github.mikephil.charting.components.YAxis;
 import com.mbientlab.metawear.AsyncDataProducer;
 import com.mbientlab.metawear.data.Acceleration;
 import com.mbientlab.metawear.module.Accelerometer;
+import com.mbientlab.metawear.module.AccelerometerBmi160;
 import com.mbientlab.metawear.module.AccelerometerBosch;
 import com.mbientlab.metawear.module.AccelerometerMma8452q;
 import com.mbientlab.metawear.tutorial.multimw.R;
@@ -55,72 +56,74 @@ public class AccelerometerFragment extends ThreeAxisChartFragment {
 
     private Spinner accRangeSelection;
     private Accelerometer accelerometer = null;
+    private AsyncDataProducer accel = null;
     private int rangeIndex= 0;
 
-    //? sensorRedId = 2131755315 = R.string.navigation_fragment_accelerometer ??????????
-    public AccelerometerFragment() {
+    //? sensorResId = 2131755315 = R.string.navigation_fragment_accelerometer ??????????
+    public AccelerometerFragment(AccelerometerBmi160 accelerometer, AsyncDataProducer accel) {
         super("acceleration", R.layout.fragment_sensor_config_spinner,
                 2131755315, -INITIAL_RANGE, INITIAL_RANGE);
-
+        this.accelerometer = accelerometer;
+        this.accel = accel;
     }
 
-    //TODO begin looking how new .xml files can be made to fit previous layout
-    @Override
-    public void onViewCreated(final View view, Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-
-        ((TextView) view.findViewById(R.id.config_option_title)).setText(R.string.config_name_acc_range);
-
-        accRangeSelection= (Spinner) view.findViewById(R.id.config_option_spinner);
-        accRangeSelection.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                rangeIndex = position;
-
-                final YAxis leftAxis = chart.getAxisLeft();
-                if (accelerometer instanceof AccelerometerBosch) {
-                    leftAxis.setAxisMaxValue(BOSCH_RANGES[rangeIndex]);
-                    leftAxis.setAxisMinValue(-BOSCH_RANGES[rangeIndex]);
-                } else if (accelerometer instanceof AccelerometerMma8452q) {
-                    leftAxis.setAxisMaxValue(MMA845Q_RANGES[rangeIndex]);
-                    leftAxis.setAxisMinValue(-MMA845Q_RANGES[rangeIndex]);
-                }
-
-                refreshChart(false);
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-
-            }
-        });
-
-        fillRangeAdapter();
-    }
+//    @Override
+//    public void onViewCreated(final View view, Bundle savedInstanceState) {
+//        super.onViewCreated(view, savedInstanceState);
+//
+//        ((TextView) view.findViewById(R.id.config_option_title)).setText(R.string.config_name_acc_range);
+//
+//        accRangeSelection= (Spinner) view.findViewById(R.id.config_option_spinner);
+//        accRangeSelection.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+//            @Override
+//            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+//                rangeIndex = position;
+//
+//                final YAxis leftAxis = chart.getAxisLeft();
+//                if (accelerometer instanceof AccelerometerBosch) {
+//                    leftAxis.setAxisMaxValue(BOSCH_RANGES[rangeIndex]);
+//                    leftAxis.setAxisMinValue(-BOSCH_RANGES[rangeIndex]);
+//                } else if (accelerometer instanceof AccelerometerMma8452q) {
+//                    leftAxis.setAxisMaxValue(MMA845Q_RANGES[rangeIndex]);
+//                    leftAxis.setAxisMinValue(-MMA845Q_RANGES[rangeIndex]);
+//                }
+//
+//                refreshChart(false);
+//            }
+//
+//            @Override
+//            public void onNothingSelected(AdapterView<?> parent) {
+//
+//            }
+//        });
+//
+//        fillRangeAdapter();
+//    }
 
     @Override
     protected void setup() {
-        Accelerometer.ConfigEditor<?> editor = accelerometer.configure();
-
-        editor.odr(ACC_FREQ);
-        if (accelerometer instanceof AccelerometerBosch) {
-            editor.range(BOSCH_RANGES[rangeIndex]);
-        } else if (accelerometer instanceof AccelerometerMma8452q) {
-            editor.range(MMA845Q_RANGES[rangeIndex]);
-        }
-        editor.commit();
+//        Accelerometer.ConfigEditor<?> editor = accelerometer.configure();
+//
+//        editor.odr(ACC_FREQ);
+//        if (accelerometer instanceof AccelerometerBosch) {
+//            editor.range(BOSCH_RANGES[rangeIndex]);
+//        } else if (accelerometer instanceof AccelerometerMma8452q) {
+//            editor.range(MMA845Q_RANGES[rangeIndex]);
+//        }
+//        editor.commit();
 
         samplePeriod= 1 / accelerometer.getOdr();
 
-        final AsyncDataProducer producer = accelerometer.packedAcceleration() == null ?
-                accelerometer.packedAcceleration() :
-                accelerometer.acceleration();
-        producer.addRouteAsync(source -> source.stream((data, env) -> {
+//        final AsyncDataProducer producer = accelerometer.packedAcceleration() == null ?
+//                accelerometer.packedAcceleration() :
+//                accelerometer.acceleration();
+        accel.addRouteAsync(source -> source.stream((data, env) -> {
             final Acceleration value = data.value(Acceleration.class);
+            System.out.println("CHARTED Accel:" + data.value(Acceleration.class).toString());
             addChartData(value.x(), value.y(), value.z(), samplePeriod);
         })).continueWith(task -> {
             streamRoute = task.getResult();
-            producer.start();
+            accel.start();
             accelerometer.start();
 
             return null;
@@ -137,13 +140,13 @@ public class AccelerometerFragment extends ThreeAxisChartFragment {
         ).stop();
     }
 
-    private void fillRangeAdapter() {
-        ArrayAdapter<CharSequence> spinnerAdapter= null;
-        spinnerAdapter= ArrayAdapter.createFromResource(getContext(), R.array.values_bmi160_acc_range, android.R.layout.simple_spinner_item);
-
-        if (spinnerAdapter != null) {
-            spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-            accRangeSelection.setAdapter(spinnerAdapter);
-        }
-    }
+//    private void fillRangeAdapter() {
+//        ArrayAdapter<CharSequence> spinnerAdapter= null;
+//        spinnerAdapter= ArrayAdapter.createFromResource(getContext(), R.array.values_bmi160_acc_range, android.R.layout.simple_spinner_item);
+//
+//        if (spinnerAdapter != null) {
+//            spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+//            accRangeSelection.setAdapter(spinnerAdapter);
+//        }
+//    }
 }

@@ -70,9 +70,10 @@ public abstract class SensorFragment extends MainActivityFragment {
     private final int layoutId;
 
     private final Handler chartHandler= new Handler();
+    public int sensorResId;
 
     protected SensorFragment(int sensorResId, int layoutId, float min, float max) {
-        super(sensorResId);
+        this.sensorResId = sensorResId;
         this.layoutId= layoutId;
         this.min= min;
         this.max= max;
@@ -99,6 +100,7 @@ public abstract class SensorFragment extends MainActivityFragment {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        super.onCreateView(inflater,container,savedInstanceState);
         setRetainInstance(true);
 
         View v= inflater.inflate(layoutId, container, false);

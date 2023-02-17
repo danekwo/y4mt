@@ -59,6 +59,7 @@ import com.mbientlab.metawear.module.AccelerometerBmi160;
 import com.mbientlab.metawear.module.Debug;
 import com.mbientlab.metawear.module.Haptic;
 import com.mbientlab.metawear.module.Switch;
+import com.mbientlab.metawear.tutorial.multimw.chart.AccelerometerFragment;
 
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -74,16 +75,16 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
     private final HashMap<DeviceState, MetaWearBoard> stateToBoards;
     private BtleService.LocalBinder binder;
     private ConnectedDevicesAdapter connectedDevices= null;
-    protected int sensorResId;
+//    protected int sensorResId;
 
     public MainActivityFragment() {
         stateToBoards = new HashMap<>();
     }
     //TODO remove default constructor when sensorResID is given in final class
-    public MainActivityFragment(int sensorResId) {
-        stateToBoards = new HashMap<>();
-        this.sensorResId= sensorResId;
-    }
+//    public MainActivityFragment(int sensorResId) {
+//        stateToBoards = new HashMap<>();
+//        this.sensorResId= sensorResId;
+//    }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -110,6 +111,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
 
         final Capture<AsyncDataProducer> orientCapture = new Capture<>();
         final Capture<AsyncDataProducer> accelDataCapture = new Capture<>();
+        final Capture<AccelerometerBmi160> accelerometerBmi160Capture = new Capture<>();
         final Capture<AccelerometerBmi160.StepDetectorDataProducer> stepCapture = new Capture<>();
 
         AtomicInteger stepCount = new AtomicInteger(0);
@@ -137,21 +139,25 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
             orientCapture.set(orientation);
             stepCapture.set(stepDetector);
             accelDataCapture.set(accel);
+            accelerometerBmi160Capture.set(accelerometer);
+
+            //*CHARTING
+            new AccelerometerFragment(accelerometer, accel);
 
             //? how many values to average? 15? (multiple of 3 due to packed acc?)
             //TODO implement thresholds
-            accel.addRouteAsync(source -> source.lowpass((byte) 15).stream((data, env) -> getActivity().runOnUiThread(() -> {
-                newDeviceState.deviceAccel = "Accel (lpf):" + data.value(Acceleration.class).toString();
-                System.out.println("Accel (lpf):" + data.value(Acceleration.class).toString());
-                connectedDevices.notifyDataSetChanged();
-            })));
+//            accel.addRouteAsync(source -> source.lowpass((byte) 15).stream((data, env) -> getActivity().runOnUiThread(() -> {
+//                newDeviceState.deviceAccel = "Accel (lpf):" + data.value(Acceleration.class).toString();
+//                System.out.println("Accel (lpf):" + data.value(Acceleration.class).toString());
+//                //connectedDevices.notifyDataSetChanged();
+//            })));
 
             //* non-filtered acc
-//            accel.addRouteAsync(source -> source.stream((data, env) -> getActivity().runOnUiThread(() -> {
-//                newDeviceState.deviceAccel = "Accel:" + data.value(Acceleration.class).toString();
+            accel.addRouteAsync(source -> source.stream((data, env) -> getActivity().runOnUiThread(() -> {
+                newDeviceState.deviceAccel = "Accel:" + data.value(Acceleration.class).toString();
 //                System.out.println("Accel:" + data.value(Acceleration.class).toString());
 //                connectedDevices.notifyDataSetChanged();
-//            })));
+            })));
 
             stepDetector.addRouteAsync(source -> source.stream((data, env) -> getActivity().runOnUiThread(() -> {
                 /**NOTE - Step detection algorithm
@@ -166,7 +172,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
                     newDeviceState.deviceSteps = "Steps:" + stepCount;
                     connectedDevices.notifyDataSetChanged();
 
-                    newBoard.getModule(Haptic.class).startMotor((short) 400); //* step –> vibrate
+                    newBoard.getModule(Haptic.class).startMotor((short) 100); //* step –> vibrate
                 } else {
                     twoStep.set(true);
                 }
@@ -210,6 +216,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
                 orientCapture.get().start();
                 accelDataCapture.get().start();
                 stepCapture.get().start();
+                accelerometerBmi160Capture.get().start();
             }
             return null;
         });
@@ -252,6 +259,5 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
 
     @Override
     public void onServiceDisconnected(ComponentName name) {
-
     }
 }
