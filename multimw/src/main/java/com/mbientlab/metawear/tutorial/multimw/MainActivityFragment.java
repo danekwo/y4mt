@@ -55,6 +55,7 @@ import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.Route;
 import com.mbientlab.metawear.Subscriber;
 import com.mbientlab.metawear.android.BtleService;
+import com.mbientlab.metawear.builder.filter.Comparison;
 import com.mbientlab.metawear.data.Acceleration;
 import com.mbientlab.metawear.data.SensorOrientation;
 import com.mbientlab.metawear.module.Accelerometer;
@@ -66,7 +67,9 @@ import com.mbientlab.metawear.module.Switch;
 import com.mbientlab.metawear.module.Temperature;
 
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import bolts.Capture;
@@ -108,13 +111,14 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
         connectedDevices.add(newDeviceState);
         stateToBoards.put(newDeviceState, newBoard);
 
-        final Capture<AsyncDataProducer> orientCapture = new Capture<>();
-        final Capture<AsyncDataProducer> accelDataCapture = new Capture<>();
+//        final Capture<AsyncDataProducer> orientCapture = new Capture<>();
+//        final Capture<AsyncDataProducer> accelDataCapture = new Capture<>();
         final Capture<AccelerometerBmi160> accelerometerBmi160Capture = new Capture<>();
         final Capture<AccelerometerBmi160.StepDetectorDataProducer> stepCapture = new Capture<>();
 
         AtomicInteger stepCount = new AtomicInteger(0);
         AtomicReference<Boolean> twoStep = new AtomicReference<>(false);
+        AtomicReference<Float> maxAccX = new AtomicReference<>(0.1f);
 
         newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> connectedDevices.remove(newDeviceState)));
         newBoard.connectAsync(
@@ -126,29 +130,37 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
             });
 
             final AccelerometerBmi160 accelerometer = newBoard.getModule(AccelerometerBmi160.class);
-            final AsyncDataProducer orientation = accelerometer.orientation();
+//            final AsyncDataProducer orientation = accelerometer.orientation();
             final AsyncDataProducer accel = accelerometer.packedAcceleration();
             final AccelerometerBmi160.StepDetectorDataProducer stepDetector = accelerometer.stepDetector();
 
-            stepDetector.configure().mode(AccelerometerBmi160.StepDetectorMode.ROBUST).commit();
+            stepDetector.configure().mode(AccelerometerBmi160.StepDetectorMode.NORMAL).commit();
             accelerometer.configure().range(AccelerometerBmi160.AccRange.AR_4G).odr(AccelerometerBmi160.OutputDataRate.ODR_50_HZ).commit();
             //* ODR? RANGE? use –>  accelerometer.getOdr(); accelerometer.getRange();
             //System.out.println("acc range: " + accelerometer.getRange() + " /// acc freq: " + accelerometer.getOdr() + "###");
 
-            orientCapture.set(orientation);
+//            orientCapture.set(orientation);
             stepCapture.set(stepDetector);
-            accelDataCapture.set(accel);
+//            accelDataCapture.set(accel);
             accelerometerBmi160Capture.set(accelerometer);
 
             //? how many values to average? 15? (multiple of 3 due to packed acc?)
             //? what is the point of this ????!?!?!?!?
             //TODO implement thresholds
-            accel.addRouteAsync(source -> source.lowpass((byte) 15).stream((data, env) -> getActivity().runOnUiThread(() -> {
-                newDeviceState.deviceAccel = "Accel (lpf):" + data.value(Acceleration.class).toString();
-                System.out.println("Accel (lpf):" + data.value(Acceleration.class).toString());
-                connectedDevices.notifyDataSetChanged();
-            })));
 
+            accel.addRouteAsync(source -> source.multicast()
+//                .to().lowpass((byte) 15).stream((data, env) -> getActivity().runOnUiThread(() -> {
+//                    newDeviceState.deviceAccel = "Accel (lpf):" + data.value(Acceleration.class).toString();
+////                    System.out.println("Accel (lpf):" + data.value(Acceleration.class).toString());
+//                    connectedDevices.notifyDataSetChanged();
+//                }))
+                //! creating a new data point for max() within steps
+                .to().split().index(1).stream((data, env) -> getActivity().runOnUiThread(() -> {
+                    if (data.value(Float.class) > maxAccX.get()) {
+                        maxAccX.set(data.value(Float.class));
+                    }
+                }))
+                );
             //* non-filtered acc
 //            accel.addRouteAsync(source -> source.stream((data, env) -> getActivity().runOnUiThread(() -> {
 //                newDeviceState.deviceAccel = "Accel:" + data.value(Acceleration.class).toString();
@@ -167,18 +179,22 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
                     twoStep.set(false);
                     stepCount.getAndIncrement();
                     newDeviceState.deviceSteps = "Steps:" + stepCount;
+
+                    newDeviceState.maxAccelX = "max Step Acc X:" + maxAccX;
+                    maxAccX.set(0.1f);
+                    System.out.println("maxAccelX reset:" + maxAccX.get().toString());
                     connectedDevices.notifyDataSetChanged();
 
-                    newBoard.getModule(Haptic.class).startMotor((short) 400); //* step –> vibrate
+                    newBoard.getModule(Haptic.class).startMotor((short) 200); //* step –> vibrate
                 } else {
                     twoStep.set(true);
                 }
             })));
 
-            orientation.addRouteAsync(source -> source.stream((data, env) -> getActivity().runOnUiThread(() -> {
-                newDeviceState.deviceOrientation = data.value(SensorOrientation.class).toString();
-                connectedDevices.notifyDataSetChanged();
-            })));
+//            orientation.addRouteAsync(source -> source.stream((data, env) -> getActivity().runOnUiThread(() -> {
+//                newDeviceState.deviceOrientation = data.value(SensorOrientation.class).toString();
+//                connectedDevices.notifyDataSetChanged();
+//            })));
 
             return null;
         }
@@ -210,8 +226,8 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
                     });
                 }
             } else {
-                orientCapture.get().start();
-                accelDataCapture.get().start();
+//                orientCapture.get().start();
+//                accelDataCapture.get().start();
                 stepCapture.get().start();
                 accelerometerBmi160Capture.get().start();
             }

@@ -38,7 +38,7 @@ import android.bluetooth.BluetoothDevice;
  */
 class DeviceState {
     final BluetoothDevice btDevice;
-    String deviceOrientation, deviceSteps, deviceAccel;
+    String deviceOrientation, deviceSteps, deviceAccel, maxAccelX;
     boolean pressed, connecting;
 
     DeviceState(BluetoothDevice btDevice) {
@@ -46,6 +46,7 @@ class DeviceState {
         this.deviceOrientation= null;
         this.deviceSteps = null;
         this.deviceAccel = null;
+        this.maxAccelX = null;
         pressed= false;
     }
 
