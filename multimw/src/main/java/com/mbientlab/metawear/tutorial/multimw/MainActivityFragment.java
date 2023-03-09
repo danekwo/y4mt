@@ -37,39 +37,29 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.os.Bundle;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
-import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
-import android.view.Menu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ListView;
-import android.widget.Toolbar;
 
 import com.mbientlab.metawear.AsyncDataProducer;
 import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.Route;
 import com.mbientlab.metawear.Subscriber;
 import com.mbientlab.metawear.android.BtleService;
-import com.mbientlab.metawear.builder.filter.Comparison;
-import com.mbientlab.metawear.data.Acceleration;
-import com.mbientlab.metawear.data.SensorOrientation;
 import com.mbientlab.metawear.module.Accelerometer;
 import com.mbientlab.metawear.module.AccelerometerBmi160;
-import com.mbientlab.metawear.module.AccelerometerBosch;
 import com.mbientlab.metawear.module.Debug;
 import com.mbientlab.metawear.module.Haptic;
 import com.mbientlab.metawear.module.Switch;
-import com.mbientlab.metawear.module.Temperature;
 
 import java.util.HashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import bolts.Capture;
@@ -112,7 +102,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
         stateToBoards.put(newDeviceState, newBoard);
 
 //        final Capture<AsyncDataProducer> orientCapture = new Capture<>();
-//        final Capture<AsyncDataProducer> accelDataCapture = new Capture<>();
+        final Capture<AsyncDataProducer> accelDataCapture = new Capture<>();
         final Capture<AccelerometerBmi160> accelerometerBmi160Capture = new Capture<>();
         final Capture<AccelerometerBmi160.StepDetectorDataProducer> stepCapture = new Capture<>();
 
@@ -130,6 +120,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
             });
 
             final AccelerometerBmi160 accelerometer = newBoard.getModule(AccelerometerBmi160.class);
+
 //            final AsyncDataProducer orientation = accelerometer.orientation();
             final AsyncDataProducer accel = accelerometer.packedAcceleration();
             final AccelerometerBmi160.StepDetectorDataProducer stepDetector = accelerometer.stepDetector();
@@ -141,13 +132,10 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
 
 //            orientCapture.set(orientation);
             stepCapture.set(stepDetector);
-//            accelDataCapture.set(accel);
+            accelDataCapture.set(accel);
             accelerometerBmi160Capture.set(accelerometer);
 
             //? how many values to average? 15? (multiple of 3 due to packed acc?)
-            //? what is the point of this ????!?!?!?!?
-            //TODO implement thresholds
-
             accel.addRouteAsync(source -> source.multicast()
 //                .to().lowpass((byte) 15).stream((data, env) -> getActivity().runOnUiThread(() -> {
 //                    newDeviceState.deviceAccel = "Accel (lpf):" + data.value(Acceleration.class).toString();
@@ -185,7 +173,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
                     System.out.println("maxAccelX reset:" + maxAccX.get().toString());
                     connectedDevices.notifyDataSetChanged();
 
-                    newBoard.getModule(Haptic.class).startMotor((short) 200); //* step –> vibrate
+                    newBoard.getModule(Haptic.class).startMotor((short) 100); //* step –> vibrate
                 } else {
                     twoStep.set(true);
                 }
@@ -227,7 +215,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
                 }
             } else {
 //                orientCapture.get().start();
-//                accelDataCapture.get().start();
+                accelDataCapture.get().start();
                 stepCapture.get().start();
                 accelerometerBmi160Capture.get().start();
             }
