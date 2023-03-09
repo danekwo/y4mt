@@ -126,7 +126,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
             final AccelerometerBmi160.StepDetectorDataProducer stepDetector = accelerometer.stepDetector();
 
             stepDetector.configure().mode(AccelerometerBmi160.StepDetectorMode.NORMAL).commit();
-            accelerometer.configure().range(AccelerometerBmi160.AccRange.AR_2G).odr(AccelerometerBmi160.OutputDataRate.ODR_50_HZ).commit();
+            accelerometer.configure().range(AccelerometerBmi160.AccRange.AR_4G).odr(AccelerometerBmi160.OutputDataRate.ODR_50_HZ).commit();
             //* ODR? RANGE? use –>  accelerometer.getOdr(); accelerometer.getRange();
             //System.out.println("acc range: " + accelerometer.getRange() + " /// acc freq: " + accelerometer.getOdr() + "###");
 
