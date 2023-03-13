@@ -56,7 +56,9 @@ import com.mbientlab.metawear.module.Accelerometer;
 import com.mbientlab.metawear.module.AccelerometerBmi160;
 import com.mbientlab.metawear.module.Debug;
 import com.mbientlab.metawear.module.Haptic;
+import com.mbientlab.metawear.module.Led;
 import com.mbientlab.metawear.module.Switch;
+import com.mbientlab.metawear.module.Timer;
 
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -71,7 +73,6 @@ import bolts.Continuation;
 public class MainActivityFragment extends Fragment implements ServiceConnection {
     private final HashMap<DeviceState, MetaWearBoard> stateToBoards;
     private BtleService.LocalBinder binder;
-
     private ConnectedDevicesAdapter connectedDevices= null;
 
     public MainActivityFragment() {
@@ -102,7 +103,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
         stateToBoards.put(newDeviceState, newBoard);
 
 //        final Capture<AsyncDataProducer> orientCapture = new Capture<>();
-        final Capture<AsyncDataProducer> accelDataCapture = new Capture<>();
+//        final Capture<AsyncDataProducer> accelDataCapture = new Capture<>();
         final Capture<AccelerometerBmi160> accelerometerBmi160Capture = new Capture<>();
         final Capture<AccelerometerBmi160.StepDetectorDataProducer> stepCapture = new Capture<>();
 
@@ -119,6 +120,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
                 connectedDevices.notifyDataSetChanged();
             });
 
+            final Timer mwTimer= newBoard.getModuleOrThrow(Timer.class);
             final AccelerometerBmi160 accelerometer = newBoard.getModule(AccelerometerBmi160.class);
 
 //            final AsyncDataProducer orientation = accelerometer.orientation();
@@ -132,8 +134,10 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
 
 //            orientCapture.set(orientation);
             stepCapture.set(stepDetector);
-            accelDataCapture.set(accel);
+//            accelDataCapture.set(accel);
             accelerometerBmi160Capture.set(accelerometer);
+
+            mwTimer.scheduleAsync(2000, true, () -> accelerometerBmi160Capture.get().stop());
 
             //? how many values to average? 15? (multiple of 3 due to packed acc?)
             accel.addRouteAsync(source -> source.multicast()
@@ -193,13 +197,17 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
                 connectedDevices.notifyDataSetChanged();
             });
             //* example: Turn blue led on when button is pressed
-                /*Led led = newBoard.getModule(Led.class);
-                if (data.value(Boolean.class)){
-                    led.editPattern(Led.Color.BLUE, Led.PatternPreset.SOLID).commit();
-                    led.play();
-                } else{
-                    led.stop(true);
-                } */
+            Timer.ScheduledTask mwTask = newBoard.getModule(Timer.class).lookupScheduledTask((byte) 0);
+            Led led = newBoard.getModule(Led.class);
+            if (data.value(Boolean.class)){
+                led.editPattern(Led.Color.BLUE, Led.PatternPreset.SOLID).commit();
+                led.play();
+                if (mwTask!= null){
+                    mwTask.start();
+                }
+            }else{
+                led.stop(true);
+            }
 
         }))).continueWith((Continuation<Route, Void>) task -> {
             if (task.isFaulted()) {
@@ -215,7 +223,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
                 }
             } else {
 //                orientCapture.get().start();
-                accelDataCapture.get().start();
+//                accelDataCapture.get().start();
                 stepCapture.get().start();
                 accelerometerBmi160Capture.get().start();
             }
