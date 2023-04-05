@@ -37,26 +37,22 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.os.Bundle;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.Fragment;
-import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.ListView;
 
 import com.mbientlab.metawear.AsyncDataProducer;
-import com.mbientlab.metawear.Data;
 import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.Route;
 import com.mbientlab.metawear.Subscriber;
 import com.mbientlab.metawear.android.BtleService;
-import com.mbientlab.metawear.builder.RouteBuilder;
-import com.mbientlab.metawear.builder.RouteComponent;
-import com.mbientlab.metawear.data.SensorOrientation;
+import com.mbientlab.metawear.data.Acceleration;
 import com.mbientlab.metawear.module.Accelerometer;
 import com.mbientlab.metawear.module.AccelerometerBmi160;
 import com.mbientlab.metawear.module.AccelerometerBosch;
@@ -68,7 +64,6 @@ import java.util.HashMap;
 
 import bolts.Capture;
 import bolts.Continuation;
-import bolts.Task;
 
 /**
  * A placeholder fragment containing a simple view.
@@ -109,31 +104,50 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
         stateToBoards.put(newDeviceState, newBoard);
 
         final Capture<AsyncDataProducer> orientCapture = new Capture<>();
-        final Capture<Accelerometer> accelCapture = new Capture<>();
-        final Capture<AccelerometerBmi160.StepDetectorDataProducer> stepCapture = new Capture<>();
-        // TODO figure out what to do with stepCounter capture
+        final Capture<Accelerometer.AccelerationDataProducer> accelCapture = new Capture<>();
 
         newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> connectedDevices.remove(newDeviceState)));
-        newBoard.connectAsync().onSuccessTask(task -> {
+        newBoard.connectAsync()
+        // TODO remove orientation tracking in all files
+//        .onSuccessTask(task -> {
+//            getActivity().runOnUiThread(() -> {
+//                newDeviceState.connecting= false;
+//                connectedDevices.notifyDataSetChanged();
+//            });
+//
+//            final Accelerometer accelerometer = newBoard.getModule(Accelerometer.class);
+//            final AsyncDataProducer orientation;
+//
+//            if (accelerometer instanceof AccelerometerBosch) {
+//                orientation = ((AccelerometerBosch) accelerometer).orientation();
+//            } else {
+//                orientation = ((AccelerometerMma8452q) accelerometer).orientation();
+//            }
+//            orientCapture.set(orientation);
+//
+//            return orientation.addRouteAsync(source -> source.stream((data, env) -> {
+//                getActivity().runOnUiThread(() -> {
+//                    newDeviceState.deviceOrientation = data.value(SensorOrientation.class).toString();
+//                    connectedDevices.notifyDataSetChanged();
+//                });
+//            }));
+//        })
+        .onSuccessTask(task -> {
             getActivity().runOnUiThread(() -> {
                 newDeviceState.connecting= false;
                 connectedDevices.notifyDataSetChanged();
             });
 
             final Accelerometer accelerometer = newBoard.getModule(Accelerometer.class);
-            accelCapture.set(accelerometer);
+            accelerometer.configure().range(AccelerometerBosch.AccRange.AR_4G.range).odr(AccelerometerBmi160.OutputDataRate.ODR_12_5_HZ.frequency).commit();
 
-            final AsyncDataProducer orientation;
-            if (accelerometer instanceof AccelerometerBosch) {
-                orientation = ((AccelerometerBosch) accelerometer).orientation();
-            } else {
-                orientation = ((AccelerometerMma8452q) accelerometer).orientation();
-            }
-            orientCapture.set(orientation);
+            final Accelerometer.AccelerationDataProducer acceleration = ((AccelerometerBmi160) accelerometer).acceleration();
+            accelCapture.set(acceleration);
 
-            return orientation.addRouteAsync(source -> source.stream((data, env) -> {
+            return acceleration.addRouteAsync(source -> source.stream((data, env) -> {
                 getActivity().runOnUiThread(() -> {
-                    newDeviceState.deviceOrientation = data.value(SensorOrientation.class).toString();
+                    newDeviceState.deviceAcc = data.value(Acceleration.class).toString();
+                    System.out.println(data.value(Acceleration.class).toString());
                     connectedDevices.notifyDataSetChanged();
                 });
             }));
@@ -155,7 +169,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
                     });
                 }
             } else {
-                orientCapture.get().start();
+//                orientCapture.get().start();
                 accelCapture.get().start();
             }
             return null;

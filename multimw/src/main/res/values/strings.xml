@@ -35,6 +35,6 @@
     <string name="text_released">Released</string>
     <string name="text_pressed">Pressed</string>
     <string name="text_orientation">Orientation</string>
-    <string name="text_steps">Steps</string>
+    <string name="text_acc">Acc</string>
     <string name="text_connecting">Connecting&#8230;</string>
 </resources>
