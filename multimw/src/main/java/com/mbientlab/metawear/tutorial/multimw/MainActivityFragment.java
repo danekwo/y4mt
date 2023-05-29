@@ -52,12 +52,11 @@ import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.Route;
 import com.mbientlab.metawear.Subscriber;
 import com.mbientlab.metawear.android.BtleService;
-import com.mbientlab.metawear.data.Acceleration;
+import com.mbientlab.metawear.builder.function.Function1;
 import com.mbientlab.metawear.module.Accelerometer;
 import com.mbientlab.metawear.module.AccelerometerBmi160;
-import com.mbientlab.metawear.module.AccelerometerBosch;
-import com.mbientlab.metawear.module.AccelerometerMma8452q;
 import com.mbientlab.metawear.module.Debug;
+import com.mbientlab.metawear.module.SensorFusionBosch;
 import com.mbientlab.metawear.module.Switch;
 
 import java.util.HashMap;
@@ -86,11 +85,9 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
         owner.getApplicationContext().bindService(new Intent(owner, BtleService.class), this, Context.BIND_AUTO_CREATE);
     }
 
-
     @Override
     public void onDestroy() {
         super.onDestroy();
-
         getActivity().getApplicationContext().unbindService(this);
     }
 
@@ -104,7 +101,9 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
         stateToBoards.put(newDeviceState, newBoard);
 
         final Capture<AsyncDataProducer> orientCapture = new Capture<>();
-        final Capture<Accelerometer.AccelerationDataProducer> accelCapture = new Capture<>();
+        final Capture<AsyncDataProducer> accelCapture = new Capture<>();
+        final Capture<AccelerometerBmi160> accelerometerBmi160Capture = new Capture<>();
+        final Capture<SensorFusionBosch> fusionCapture = new Capture<>();
 
         newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> connectedDevices.remove(newDeviceState)));
         newBoard.connectAsync()
@@ -138,19 +137,33 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
                 connectedDevices.notifyDataSetChanged();
             });
 
-            final Accelerometer accelerometer = newBoard.getModule(Accelerometer.class);
-            accelerometer.configure().range(AccelerometerBosch.AccRange.AR_4G.range).odr(AccelerometerBmi160.OutputDataRate.ODR_12_5_HZ.frequency).commit();
+//            final AccelerometerBmi160 accelerometer = newBoard.getModule(AccelerometerBmi160.class);
+            final SensorFusionBosch fusion = newBoard.getModule(SensorFusionBosch.class);
+            fusion.configure().mode(SensorFusionBosch.Mode.M4G).accRange(SensorFusionBosch.AccRange.AR_4G).gyroRange(SensorFusionBosch.GyroRange.GR_500DPS).commit();
+//            accelerometer.configure().range(AccelerometerBmi160.AccRange.AR_4G.range).odr(AccelerometerBmi160.OutputDataRate.ODR_50_HZ.frequency).commit();
 
-            final Accelerometer.AccelerationDataProducer acceleration = ((AccelerometerBmi160) accelerometer).acceleration();
-            accelCapture.set(acceleration);
 
-            return acceleration.addRouteAsync(source -> source.stream((data, env) -> {
+//            final AsyncDataProducer accel = accelerometer.acceleration();
+            final AsyncDataProducer accel = fusion.linearAcceleration();
+            accelCapture.set(accel);
+//            accelerometerBmi160Capture.set(accelerometer);
+            fusionCapture.set(fusion);
+
+            // index –> x:0, y:1, z:2
+//            accel.addRouteAsync(source -> source.split().index(1).filter(ThresholdOutput.BINARY, 1f, 0.2f).stream((data, env) -> {
+            accel.addRouteAsync(source -> source.map(Function1.RMS).stream((data, env) -> {
                 getActivity().runOnUiThread(() -> {
-                    newDeviceState.deviceAcc = data.value(Acceleration.class).toString();
-                    System.out.println(data.value(Acceleration.class).toString());
+//                    String deviceAcc = String.valueOf((( Math.sqrt(((int) Math.pow(data.value(Acceleration.class).x(), 2)) + (int) Math.pow(data.value(Acceleration.class).y(), 2))) + (int) Math.pow(data.value(Acceleration.class).z(),2)));
+//                    String deviceAcc = String.valueOf(( data.value(Acceleration.class).x() + data.value(Acceleration.class).y() + data.value(Acceleration.class).z())/3);
+                    String deviceAcc = data.value(Float.class).toString();
+                    newDeviceState.deviceAcc = deviceAcc;
+//                    newDeviceState.deviceAcc = data.value(Acceleration.class).toString();
+                    System.out.println(deviceAcc);
                     connectedDevices.notifyDataSetChanged();
                 });
             }));
+
+            return null;
         }).onSuccessTask(task -> newBoard.getModule(Switch.class).state().addRouteAsync(source -> source.stream((Subscriber) (data, env) -> {
             getActivity().runOnUiThread(() -> {
                 newDeviceState.pressed = data.value(Boolean.class);
@@ -171,6 +184,8 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
             } else {
 //                orientCapture.get().start();
                 accelCapture.get().start();
+//                accelerometerBmi160Capture.get().start();
+                fusionCapture.get().start();
             }
             return null;
         });
@@ -194,12 +209,6 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
 
             Accelerometer accelerometer = selectedBoard.getModule(Accelerometer.class);
             accelerometer.stop();
-            if (accelerometer instanceof AccelerometerBosch) {
-                ((AccelerometerBosch) accelerometer).orientation().stop();
-            } else {
-                ((AccelerometerMma8452q) accelerometer).orientation().stop();
-            }
-
             selectedBoard.tearDown();
             selectedBoard.getModule(Debug.class).disconnectAsync();
 

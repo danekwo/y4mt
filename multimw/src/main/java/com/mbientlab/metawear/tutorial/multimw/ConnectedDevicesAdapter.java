@@ -85,6 +85,7 @@ public class ConnectedDevicesAdapter extends ArrayAdapter<DeviceState> {
             viewHolder.deviceOrientation.setVisibility(View.GONE);
             viewHolder.deviceAcc.setVisibility(View.GONE);
             viewHolder.switchState.setVisibility(View.GONE);
+
         } else {
             viewHolder.deviceOrientation.setVisibility(View.VISIBLE);
             viewHolder.deviceAcc.setVisibility(View.VISIBLE);
