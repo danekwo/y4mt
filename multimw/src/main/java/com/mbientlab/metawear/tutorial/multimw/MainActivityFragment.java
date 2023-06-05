@@ -52,14 +52,18 @@ import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.Route;
 import com.mbientlab.metawear.Subscriber;
 import com.mbientlab.metawear.android.BtleService;
+import com.mbientlab.metawear.builder.filter.ThresholdOutput;
 import com.mbientlab.metawear.builder.function.Function1;
+import com.mbientlab.metawear.data.Acceleration;
 import com.mbientlab.metawear.module.Accelerometer;
 import com.mbientlab.metawear.module.AccelerometerBmi160;
 import com.mbientlab.metawear.module.Debug;
+import com.mbientlab.metawear.module.Haptic;
 import com.mbientlab.metawear.module.SensorFusionBosch;
 import com.mbientlab.metawear.module.Switch;
 
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import bolts.Capture;
 import bolts.Continuation;
@@ -100,10 +104,12 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
         connectedDevices.add(newDeviceState);
         stateToBoards.put(newDeviceState, newBoard);
 
-        final Capture<AsyncDataProducer> orientCapture = new Capture<>();
+//        final Capture<AsyncDataProducer> orientCapture = new Capture<>();
         final Capture<AsyncDataProducer> accelCapture = new Capture<>();
-        final Capture<AccelerometerBmi160> accelerometerBmi160Capture = new Capture<>();
-        final Capture<SensorFusionBosch> fusionCapture = new Capture<>();
+//        final Capture<AccelerometerBmi160> accelerometerBmi160Capture = new Capture<>();
+//        final Capture<SensorFusionBosch> fusionCapture = new Capture<>();
+        final int vibrLen = 100;
+        AtomicInteger stepCount = new AtomicInteger(0);
 
         newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> connectedDevices.remove(newDeviceState)));
         newBoard.connectAsync()
@@ -137,37 +143,47 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
                 connectedDevices.notifyDataSetChanged();
             });
 
-//            final AccelerometerBmi160 accelerometer = newBoard.getModule(AccelerometerBmi160.class);
-            final SensorFusionBosch fusion = newBoard.getModule(SensorFusionBosch.class);
-            fusion.configure().mode(SensorFusionBosch.Mode.M4G).accRange(SensorFusionBosch.AccRange.AR_4G).gyroRange(SensorFusionBosch.GyroRange.GR_500DPS).commit();
-//            accelerometer.configure().range(AccelerometerBmi160.AccRange.AR_4G.range).odr(AccelerometerBmi160.OutputDataRate.ODR_50_HZ.frequency).commit();
+            final AccelerometerBmi160 accelerometer = newBoard.getModule(AccelerometerBmi160.class);
+//            final SensorFusionBosch fusion = newBoard.getModule(SensorFusionBosch.class);
+//            fusion.configure().mode(SensorFusionBosch.Mode.M4G).accRange(SensorFusionBosch.AccRange.AR_4G).gyroRange(SensorFusionBosch.GyroRange.GR_500DPS).commit();
+            accelerometer.configure().range(AccelerometerBmi160.AccRange.AR_4G.range).odr(AccelerometerBmi160.OutputDataRate.ODR_50_HZ.frequency).commit();
 
 
-//            final AsyncDataProducer accel = accelerometer.acceleration();
-            final AsyncDataProducer accel = fusion.linearAcceleration();
+            final AsyncDataProducer accel = accelerometer.acceleration();
+//            final AsyncDataProducer accel = fusion.linearAcceleration();
+
             accelCapture.set(accel);
 //            accelerometerBmi160Capture.set(accelerometer);
-            fusionCapture.set(fusion);
+//            fusionCapture.set(fusion);
 
             // index –> x:0, y:1, z:2
 //            accel.addRouteAsync(source -> source.split().index(1).filter(ThresholdOutput.BINARY, 1f, 0.2f).stream((data, env) -> {
-            accel.addRouteAsync(source -> source.map(Function1.RMS).stream((data, env) -> {
+            accel.addRouteAsync(source -> source.multicast().to().stream((data, env) -> {
                 getActivity().runOnUiThread(() -> {
 //                    String deviceAcc = String.valueOf((( Math.sqrt(((int) Math.pow(data.value(Acceleration.class).x(), 2)) + (int) Math.pow(data.value(Acceleration.class).y(), 2))) + (int) Math.pow(data.value(Acceleration.class).z(),2)));
 //                    String deviceAcc = String.valueOf(( data.value(Acceleration.class).x() + data.value(Acceleration.class).y() + data.value(Acceleration.class).z())/3);
-                    String deviceAcc = data.value(Float.class).toString();
+                    String deviceAcc = data.value(Acceleration.class).toString();
                     newDeviceState.deviceAcc = deviceAcc;
 //                    newDeviceState.deviceAcc = data.value(Acceleration.class).toString();
                     System.out.println(deviceAcc);
-                    connectedDevices.notifyDataSetChanged();
+//                    connectedDevices.notifyDataSetChanged();
                 });
-            }));
+            })
+//            .to().split().index(1).filter(ThresholdOutput.BINARY, 1f, 0.3f).stream((data, env) -> {
+//                getActivity().runOnUiThread(() -> {
+//                    newDeviceState.deviceSteps = data.value(Integer.class).toString();
+//                    connectedDevices.notifyDataSetChanged();
+//                    newBoard.getModule(Haptic.class).startMotor((short) vibrLen); //* step –> vibrate
+//                });
+//            })
+            );
 
             return null;
         }).onSuccessTask(task -> newBoard.getModule(Switch.class).state().addRouteAsync(source -> source.stream((Subscriber) (data, env) -> {
             getActivity().runOnUiThread(() -> {
                 newDeviceState.pressed = data.value(Boolean.class);
                 connectedDevices.notifyDataSetChanged();
+                newBoard.getModule(Haptic.class).startMotor((short) vibrLen); //* step –> vibrate
             });
         }))).continueWith((Continuation<Route, Void>) task -> {
             if (task.isFaulted()) {
@@ -185,7 +201,8 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
 //                orientCapture.get().start();
                 accelCapture.get().start();
 //                accelerometerBmi160Capture.get().start();
-                fusionCapture.get().start();
+//                fusionCapture.get().start();
+
             }
             return null;
         });

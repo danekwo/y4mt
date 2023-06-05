@@ -36,6 +36,7 @@
     <string name="text_pressed">Pressed</string>
     <string name="text_orientation">Orientation</string>
     <string name="text_acc">Acc</string>
+    <string name="text_steps">Steps</string>
     <string name="text_estimatedGRF">Estimated GRF</string>
     <string name="text_stanceStride">Stance:Stride ratio</string>
     <string name="text_footClearance">Foot clearance</string>
