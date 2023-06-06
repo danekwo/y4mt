@@ -38,5 +38,10 @@
     <string name="text_steps">Steps</string>
     <string name="text_accel">Accel</string>
     <string name="text_maxAccelX">Max Accel X</string>
+    <string name="text_maxAccelY">Max Accel Y</string>
+    <string name="text_maxAccelZ">Max Accel Z</string>
+    <string name="text_estimatedGRF">Estimated GRF</string>
+    <string name="text_stanceStride">Stance:Stride ratio</string>
+    <string name="text_footClearance">Foot clearance</string>
     <string name="text_connecting">Connecting&#8230;</string>
 </resources>

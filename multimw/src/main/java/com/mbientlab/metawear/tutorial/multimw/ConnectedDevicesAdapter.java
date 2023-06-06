@@ -62,6 +62,9 @@ public class ConnectedDevicesAdapter extends ArrayAdapter<DeviceState> {
             viewHolder.deviceSteps= convertView.findViewById(R.id.status_steps);
             viewHolder.deviceAccel= convertView.findViewById(R.id.status_accel);
             viewHolder.maxAccelX= convertView.findViewById(R.id.status_maxAccelX);
+            viewHolder.maxAccelY= convertView.findViewById(R.id.status_maxAccelY);
+            viewHolder.maxAccelZ= convertView.findViewById(R.id.status_maxAccelZ);
+            viewHolder.stanceStride= convertView.findViewById(R.id.status_stance);
             viewHolder.switchState= convertView.findViewById(R.id.status_button);
             viewHolder.connectingText= convertView.findViewById(R.id.text_connecting);
             viewHolder.connectingProgress= convertView.findViewById(R.id.connecting_progress);
@@ -99,17 +102,21 @@ public class ConnectedDevicesAdapter extends ArrayAdapter<DeviceState> {
             viewHolder.deviceSteps.setVisibility(View.GONE);
             viewHolder.deviceAccel.setVisibility(View.GONE);
             viewHolder.maxAccelX.setVisibility(View.GONE);
+            viewHolder.maxAccelY.setVisibility(View.GONE);
+            viewHolder.maxAccelZ.setVisibility(View.GONE);
+            viewHolder.stanceStride.setVisibility(View.GONE);
             viewHolder.switchState.setVisibility(View.GONE);
         } else {
             viewHolder.deviceOrientation.setVisibility(View.GONE);
             viewHolder.deviceSteps.setVisibility(View.VISIBLE);
             viewHolder.deviceAccel.setVisibility(View.GONE);
             viewHolder.maxAccelX.setVisibility(View.VISIBLE);
+            viewHolder.maxAccelY.setVisibility(View.VISIBLE);
+            viewHolder.maxAccelZ.setVisibility(View.VISIBLE);
+            viewHolder.stanceStride.setVisibility(View.VISIBLE);
             viewHolder.switchState.setVisibility(View.VISIBLE);
 
-            if (state.deviceOrientation != null) {
-                viewHolder.deviceOrientation.setText(state.deviceOrientation);
-            }
+
 
             if (state.deviceSteps != null) {
                 viewHolder.deviceSteps.setText(state.deviceSteps);
@@ -119,6 +126,15 @@ public class ConnectedDevicesAdapter extends ArrayAdapter<DeviceState> {
             }
             if (state.maxAccelX != null) {
                 viewHolder.maxAccelX.setText(state.maxAccelX);
+            }
+            if (state.maxAccelY != null) {
+                viewHolder.maxAccelY.setText(state.maxAccelY);
+            }
+            if (state.maxAccelZ != null) {
+                viewHolder.maxAccelZ.setText(state.maxAccelZ);
+            }
+            if (state.stanceStride != null) {
+                viewHolder.stanceStride.setText(state.stanceStride);
             }
 
             if (state.pressed) {
@@ -139,7 +155,7 @@ public class ConnectedDevicesAdapter extends ArrayAdapter<DeviceState> {
     }
 
     private class ViewHolder {
-        TextView deviceName, deviceAddress, deviceOrientation, deviceSteps, deviceAccel, maxAccelX, connectingText;
+        TextView deviceName, deviceAddress, deviceOrientation, deviceSteps, deviceAccel, maxAccelX, maxAccelY, maxAccelZ, stanceStride, connectingText;
         RadioGroup switchState;
         ProgressBar connectingProgress;
     }
@@ -155,6 +171,9 @@ public class ConnectedDevicesAdapter extends ArrayAdapter<DeviceState> {
             current.deviceSteps= newState.deviceSteps;
             current.deviceAccel= newState.deviceAccel;
             current.maxAccelX= newState.maxAccelX;
+            current.maxAccelY= newState.maxAccelY;
+            current.maxAccelZ= newState.maxAccelZ;
+            current.stanceStride= newState.stanceStride;
             notifyDataSetChanged();
         }
     }

@@ -58,7 +58,6 @@ import com.mbientlab.metawear.module.Debug;
 import com.mbientlab.metawear.module.Haptic;
 import com.mbientlab.metawear.module.Led;
 import com.mbientlab.metawear.module.Switch;
-import com.mbientlab.metawear.module.Timer;
 
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -109,7 +108,12 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
 
         AtomicInteger stepCount = new AtomicInteger(0);
         AtomicReference<Boolean> twoStep = new AtomicReference<>(false);
+        AtomicReference<Long> tic = new AtomicReference<>(System.currentTimeMillis());
+        AtomicReference<Long> toc = new AtomicReference<>();
+        AtomicReference<Long> steptime = new AtomicReference<>();
         AtomicReference<Float> maxAccX = new AtomicReference<>(0.1f);
+        AtomicReference<Float> maxAccY = new AtomicReference<>(0.1f);
+        AtomicReference<Float> maxAccZ = new AtomicReference<>(0.1f);
 
         newBoard.onUnexpectedDisconnect(status -> getActivity().runOnUiThread(() -> connectedDevices.remove(newDeviceState)));
         newBoard.connectAsync(
@@ -120,26 +124,20 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
                 connectedDevices.notifyDataSetChanged();
             });
 
-            final Timer mwTimer= newBoard.getModuleOrThrow(Timer.class);
             final AccelerometerBmi160 accelerometer = newBoard.getModule(AccelerometerBmi160.class);
 
-//            final AsyncDataProducer orientation = accelerometer.orientation();
             final AsyncDataProducer accel = accelerometer.packedAcceleration();
             final AccelerometerBmi160.StepDetectorDataProducer stepDetector = accelerometer.stepDetector();
 
-            stepDetector.configure().mode(AccelerometerBmi160.StepDetectorMode.NORMAL).commit();
-            accelerometer.configure().range(AccelerometerBmi160.AccRange.AR_4G).odr(AccelerometerBmi160.OutputDataRate.ODR_50_HZ).commit();
+            stepDetector.configure().mode(AccelerometerBmi160.StepDetectorMode.SENSITIVE).commit();
+            accelerometer.configure().range(AccelerometerBmi160.AccRange.AR_4G).odr(AccelerometerBmi160.OutputDataRate.ODR_100_HZ).commit();
             //* ODR? RANGE? use –>  accelerometer.getOdr(); accelerometer.getRange();
             //System.out.println("acc range: " + accelerometer.getRange() + " /// acc freq: " + accelerometer.getOdr() + "###");
 
-//            orientCapture.set(orientation);
             stepCapture.set(stepDetector);
 //            accelDataCapture.set(accel);
             accelerometerBmi160Capture.set(accelerometer);
 
-            mwTimer.scheduleAsync(2000, true, () -> accelerometerBmi160Capture.get().stop());
-
-            //? how many values to average? 15? (multiple of 3 due to packed acc?)
             accel.addRouteAsync(source -> source.multicast()
 //                .to().lowpass((byte) 15).stream((data, env) -> getActivity().runOnUiThread(() -> {
 //                    newDeviceState.deviceAccel = "Accel (lpf):" + data.value(Acceleration.class).toString();
@@ -147,9 +145,19 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
 //                    connectedDevices.notifyDataSetChanged();
 //                }))
                 //! creating a new data point for max() within steps
-                .to().split().index(1).stream((data, env) -> getActivity().runOnUiThread(() -> {
+                .to().split().index(0).stream((data, env) -> getActivity().runOnUiThread(() -> {
                     if (data.value(Float.class) > maxAccX.get()) {
                         maxAccX.set(data.value(Float.class));
+                    }
+                }))
+                .to().split().index(1).stream((data, env) -> getActivity().runOnUiThread(() -> {
+                    if (data.value(Float.class) > maxAccY.get()) {
+                        maxAccY.set(data.value(Float.class));
+                    }
+                }))
+                .to().split().index(2).stream((data, env) -> getActivity().runOnUiThread(() -> {
+                    if (data.value(Float.class) > maxAccZ.get()) {
+                        maxAccZ.set(data.value(Float.class));
                     }
                 }))
                 );
@@ -160,26 +168,37 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
 //                connectedDevices.notifyDataSetChanged();
 //            })));
 
-            stepDetector.addRouteAsync(source -> source.stream((data, env) -> getActivity().runOnUiThread(() -> {
+            stepDetector.addRouteAsync(source -> source.account().stream((data, env) -> getActivity().runOnUiThread(() -> {
                 /**NOTE - Step detection algorithm
                  looks like the built-in step detection algorithm detects both feet touchdown and liftoff as steps.
                  so as a quick and dirty fix, I'll flip between bool states to effectively only register half the steps,
                  to more accurately mirror steps irl with each leg
                  this was tested with the device at ankle level, it may perform differently anywhere else.
                  */
-                if (twoStep.get()) {
+                if (twoStep.get()) { //* FOOT STRIKE
                     twoStep.set(false);
                     stepCount.getAndIncrement();
                     newDeviceState.deviceSteps = "Steps:" + stepCount;
 
+                    toc.set(data.timestamp().getTimeInMillis());
                     newDeviceState.maxAccelX = "max Step Acc X:" + maxAccX;
-                    maxAccX.set(0.1f);
-                    System.out.println("maxAccelX reset:" + maxAccX.get().toString());
+                    newDeviceState.maxAccelY = "max Step Acc Y:" + maxAccY;
+                    newDeviceState.maxAccelZ = "max Step Acc Z:" + maxAccZ;
+                    maxAccX.set(0.1f); maxAccY.set(0.1f); maxAccZ.set(0.1f);
+//                    System.out.println("maxAccelX reset:" + maxAccX.get().toString());
+                    final long swingTime = Math.abs(toc.get()-tic.get());
+                    final long stanceTime = Math.abs(steptime.get()-swingTime);
+                    final int swingRat = (int) ((double) swingTime/steptime.get() * 100);
+                    final int stanceRat = (int) ((double) stanceTime/steptime.get() *100);
+                    newDeviceState.stanceStride = "stance:swing =  " +  stanceRat + ":" + swingRat ;
+
                     connectedDevices.notifyDataSetChanged();
 
-                    newBoard.getModule(Haptic.class).startMotor((short) 100); //* step –> vibrate
-                } else {
+                    newBoard.getModule(Haptic.class).startMotor((short) 80); //* step –> vibrate
+                } else { //* FOOT OFF
                     twoStep.set(true);
+                    steptime.set(data.timestamp().getTimeInMillis() - tic.get());
+                    tic.set(data.timestamp().getTimeInMillis());
                 }
             })));
 
@@ -197,14 +216,10 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
                 connectedDevices.notifyDataSetChanged();
             });
             //* example: Turn blue led on when button is pressed
-            Timer.ScheduledTask mwTask = newBoard.getModule(Timer.class).lookupScheduledTask((byte) 0);
             Led led = newBoard.getModule(Led.class);
             if (data.value(Boolean.class)){
                 led.editPattern(Led.Color.BLUE, Led.PatternPreset.SOLID).commit();
                 led.play();
-                if (mwTask!= null){
-                    mwTask.start();
-                }
             }else{
                 led.stop(true);
             }
