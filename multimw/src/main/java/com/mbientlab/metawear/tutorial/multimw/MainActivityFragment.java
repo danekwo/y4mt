@@ -52,6 +52,7 @@ import com.mbientlab.metawear.MetaWearBoard;
 import com.mbientlab.metawear.Route;
 import com.mbientlab.metawear.Subscriber;
 import com.mbientlab.metawear.android.BtleService;
+import com.mbientlab.metawear.builder.filter.Comparison;
 import com.mbientlab.metawear.module.Accelerometer;
 import com.mbientlab.metawear.module.AccelerometerBmi160;
 import com.mbientlab.metawear.module.Debug;
@@ -104,7 +105,7 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
         stateToBoards.put(newDeviceState, newBoard);
 
 //        final Capture<AsyncDataProducer> orientCapture = new Capture<>();
-//        final Capture<AsyncDataProducer> accelDataCapture = new Capture<>();
+        final Capture<AsyncDataProducer> accelDataCapture = new Capture<>();
         final Capture<AccelerometerBmi160> accelerometerBmi160Capture = new Capture<>();
         final Capture<AccelerometerBmi160.StepDetectorDataProducer> stepCapture = new Capture<>();
 
@@ -131,19 +132,19 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
 
             final AccelerometerBmi160 accelerometer = newBoard.getModule(AccelerometerBmi160.class);
 
-//            final AsyncDataProducer accel = accelerometer.packedAcceleration();
+            final AsyncDataProducer accel = accelerometer.packedAcceleration();
             final AccelerometerBmi160.StepDetectorDataProducer stepDetector = accelerometer.stepDetector();
 
             stepDetector.configure().mode(AccelerometerBmi160.StepDetectorMode.ROBUST).commit();
-//            accelerometer.configure().range(AccelerometerBmi160.AccRange.AR_4G).odr(AccelerometerBmi160.OutputDataRate.ODR_100_HZ).commit();
+            accelerometer.configure().range(AccelerometerBmi160.AccRange.AR_4G).odr(AccelerometerBmi160.OutputDataRate.ODR_50_HZ).commit();
             //* ODR? RANGE? use –>  accelerometer.getOdr(); accelerometer.getRange();
             //System.out.println("acc range: " + accelerometer.getRange() + " /// acc freq: " + accelerometer.getOdr() + "###");
 
             stepCapture.set(stepDetector);
-//            accelDataCapture.set(accel);
+            accelDataCapture.set(accel);
             accelerometerBmi160Capture.set(accelerometer);
 
-//            accel.addRouteAsync(source -> source.multicast()
+            accel.addRouteAsync(source -> source.multicast()
 ////                .to().lowpass((byte) 15).stream((data, env) -> getActivity().runOnUiThread(() -> {
 ////                    newDeviceState.deviceAccel = "Accel (lpf):" + data.value(Acceleration.class).toString();
 //////                    System.out.println("Accel (lpf):" + data.value(Acceleration.class).toString());
@@ -160,18 +161,15 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
 //                        maxAccY.set(data.value(Float.class));
 //                    }
 //                }))
-//                .to().split().index(2).stream((data, env) -> getActivity().runOnUiThread(() -> {
+                .to().split().index(2).filter(Comparison.LT,-1f).stream((data, env) -> getActivity().runOnUiThread(() -> {
+                    newDeviceState.maxAccelZ = String.format("max Step Acc Z: %,.2f",data.value(Float.class));
 //                    if (data.value(Float.class) > maxAccZ.get()) {
 //                        maxAccZ.set(data.value(Float.class));
 //                    }
-//                }))
-//                );
-            //* non-filtered acc
-//            accel.addRouteAsync(source -> source.stream((data, env) -> getActivity().runOnUiThread(() -> {
-//                newDeviceState.deviceAccel = "Accel:" + data.value(Acceleration.class).toString();
-//                System.out.println("Accel:" + data.value(Acceleration.class).toString());
-//                connectedDevices.notifyDataSetChanged();
-//            })));
+                    connectedDevices.notifyDataSetChanged();
+                }))
+                );
+
 
             stepDetector.addRouteAsync(source -> source.account().stream((data, env) -> getActivity().runOnUiThread(() -> {
                 /**NOTE - Step detection algorithm
@@ -265,8 +263,8 @@ public class MainActivityFragment extends Fragment implements ServiceConnection 
                 }
             } else {
 //                orientCapture.get().start();
-//                accelDataCapture.get().start();
-                stepCapture.get().start();
+                accelDataCapture.get().start();
+//                stepCapture.get().start();
                 accelerometerBmi160Capture.get().start();
             }
             return null;

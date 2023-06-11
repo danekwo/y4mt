@@ -42,6 +42,7 @@
     <string name="text_maxAccelZ">Max Accel Z</string>
     <string name="text_estimatedGRF">Estimated GRF</string>
     <string name="text_stanceStride">Stance:Stride ratio</string>
+    <string name="text_stanceBuffer">Stance ratio buffer</string>
     <string name="text_footClearance">Foot clearance</string>
     <string name="text_connecting">Connecting&#8230;</string>
 </resources>

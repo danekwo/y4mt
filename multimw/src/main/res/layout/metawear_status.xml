@@ -146,7 +146,7 @@
                 android:layout_gravity="center_horizontal"
                 android:text="@string/text_maxAccelZ"
                 android:textAppearance="?android:attr/textAppearanceMedium"
-                android:visibility="gone" />
+                android:visibility="visible" />
 
             <TextView
                 android:id="@+id/status_estF"

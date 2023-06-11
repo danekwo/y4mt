@@ -33,12 +33,14 @@ package com.mbientlab.metawear.tutorial.multimw;
 
 import android.bluetooth.BluetoothDevice;
 
+import java.lang.reflect.Array;
+
 /**
  * Created by etsai on 5/22/2016.
  */
 class DeviceState {
     final BluetoothDevice btDevice;
-    String deviceOrientation, deviceSteps, deviceAccel, maxAccelX, maxAccelY, maxAccelZ, stanceStride;
+    String deviceOrientation, deviceSteps, deviceAccel, maxAccelX, maxAccelY, maxAccelZ, stanceStride, stanceBuffer;
     boolean pressed, connecting;
 
     DeviceState(BluetoothDevice btDevice) {
@@ -50,6 +52,7 @@ class DeviceState {
         this.maxAccelY = null;
         this.maxAccelZ = null;
         this.stanceStride= null;
+        this.stanceBuffer= null;
         pressed= false;
     }
 
